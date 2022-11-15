@@ -6,7 +6,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"log"
-	"test/command"
+	"qqbot/command"
+	"qqbot/config"
+	"qqbot/route"
 	"time"
 )
 
@@ -14,22 +16,28 @@ var conn *websocket.Conn
 var beatS *int
 var upChannel = make(chan int)
 
-var Token = "Bot 102030298.nokZ62YTReCz94WuwyMwTyop21ajbilV"
+var Token = config.Token
 
 func setupRouter() *gin.Engine {
 	r := gin.Default()
-	r.GET("/wake", WakeHandle)
+	r.GET("/health", route.WakeHandle)
 
 	return r
 }
-func startUp() {
-	var send = false
-	defer func() { conn = nil }()
-	defer func() {
-		if !send {
-			upChannel <- 0
+func weakUp() {
+	go startUp()
+
+	for {
+
+		select {
+		case i := <-upChannel:
+			if i == 0 {
+				go startUp()
+			}
 		}
-	}()
+	}
+}
+func startUp() {
 
 	c, _, errc := websocket.DefaultDialer.Dial("wss://sandbox.api.sgroup.qq.com/websocket", nil)
 	if errc != nil {
@@ -61,10 +69,12 @@ func startUp() {
 		return
 	}
 
-	go func() {
-		send = true
-		upChannel <- 1
-	}()
+	go handleMess()
+	go heartBeat()
+}
+
+func handleMess() {
+	defer func() { upChannel <- 0 }()
 	defer conn.Close()
 	for {
 
@@ -72,7 +82,7 @@ func startUp() {
 
 		if err != nil {
 			log.Println("err:", err)
-			go weakUp()
+
 			return
 		}
 
@@ -93,25 +103,9 @@ func startUp() {
 			command.Cluctue(mess)
 		}
 	}
-}
-func weakUp() {
-	timer := time.NewTimer(time.Second * 1000 * 5)
-	defer timer.Stop()
-	go startUp()
 
-	for {
-
-		select {
-		case i := <-upChannel:
-			if i == 0 {
-				go startUp()
-			}
-			return
-		case <-timer.C:
-			return
-		}
-	}
 }
+
 func heartBeat() {
 	ticker := time.NewTicker(time.Second * 5)
 	defer ticker.Stop()
@@ -139,7 +133,7 @@ func heartBeat() {
 
 func main() {
 	go weakUp()
-	go heartBeat()
+
 	r := setupRouter()
-	r.Run(":9000")
+	r.Run(":9501")
 }

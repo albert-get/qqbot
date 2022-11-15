@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"qqbot/config"
 	"regexp"
 	"strconv"
 	"strings"
 )
 
-var Token = "Bot 102030298.nokZ62YTReCz94WuwyMwTyop21ajbilV"
+var Token = config.Token
 
 func Cluctue(mess map[string]interface{}) {
 

@@ -1,1 +1,4 @@
 .idea
+config/config.go
+docker-compose.yml
+qqbot
